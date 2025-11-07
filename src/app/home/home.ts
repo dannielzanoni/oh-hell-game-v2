@@ -34,6 +34,8 @@ export class Home {
       zTitle: 'Create a Game',
       zDescription: 'Define your game settings below:',
       zContent: DialogCreateGame,
+      zOkIcon: 'zap',
+      zOkDestructive: true,
       zOkText: 'Create Game',
       zOnOk: (instance) => {
         console.log('Game created:', instance.form.value);

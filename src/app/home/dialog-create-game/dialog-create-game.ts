@@ -1,13 +1,17 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { Component } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { ZardInputDirective } from '@shared/components/input/input.directive';
 import { ZardCheckboxComponent } from '@shared/components/checkbox/checkbox.component';
 import { ZardComboboxComponent, ZardComboboxOption } from '@shared/components/combobox/combobox.component';
+import { LobbyService } from 'src/app/services/lobby.service';
+import { Router } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   standalone: true,
   selector: 'dialog-create-game',
+  templateUrl: './dialog-create-game.html',
   imports: [
     CommonModule,
     ReactiveFormsModule,
@@ -16,68 +20,11 @@ import { ZardComboboxComponent, ZardComboboxOption } from '@shared/components/co
     ZardCheckboxComponent,
     ZardComboboxComponent
   ],
-  template: `
-    <form [formGroup]="form" class="grid gap-4">
-      <!-- MAX PLAYERS -->
-      <div class="grid gap-3 z-select-dropdown" (click)="$event.stopPropagation()">
-        <label for="maxPlayers" class="flex items-center gap-2 text-sm leading-none font-medium">
-          Max Players
-        </label>
-
-        <z-combobox
-          [options]="maxPlayersOptions"
-          class="w-[200px]"
-          placeholder="Select max players..."
-          searchPlaceholder="Search number..."
-          emptyText="No options found."
-          (zOnSelect)="onSelect($event)"
-          formControlName="maxPlayers"
-        />
-      </div>
-
-      <!-- MAX LIFES PER PLAYERS -->
-      <div class="grid gap-3 z-select-dropdown" (click)="$event.stopPropagation()">
-        <label for="maxLifePerPlayers" class="flex items-center gap-2 text-sm leading-none font-medium">
-          Max Lifes Per Players
-        </label>
-
-        <z-combobox
-          [options]="maxLifesPerPlayersOptions"
-          class="w-[200px]"
-          placeholder="Select max life per player..."
-          searchPlaceholder="Search number..."
-          emptyText="No options found."
-          (zOnSelect)="onSelectLife($event)"
-          formControlName="maxLifePerPlayers"
-        />
-      </div>
-
-      <!-- PRIVATE ROOM -->
-      <div class="grid gap-3">
-        <span z-checkbox zType="destructive" formControlName="privateRoom">
-          Private Room
-        </span>
-      </div>
-
-      <!-- PASSWORD INPUT -->
-      <div class="grid gap-3" *ngIf="form.get('privateRoom')?.value">
-        <label for="roomPassword" class="flex items-center gap-2 text-sm leading-none font-medium">
-          Room Password
-        </label>
-        <input
-          id="roomPassword"
-          z-input
-          type="password"
-          placeholder="Enter room password..."
-          formControlName="roomPassword"
-        />
-      </div>
-    </form>
-  `,
 })
 export class DialogCreateGame {
+  constructor(private lobbyService: LobbyService, private router: Router) {}
+
   form = new FormGroup({
-    gameName: new FormControl(''),
     maxPlayers: new FormControl('10'),
     maxLifePerPlayers: new FormControl('5'),
     privateRoom: new FormControl(false),
@@ -112,5 +59,23 @@ export class DialogCreateGame {
 
   onSelectLife(option: ZardComboboxOption) {
     this.form.patchValue({ maxLifePerPlayers: option.value });
+  }
+
+  async onSubmit() {
+      if (this.form.invalid) return;
+
+      const request = {
+        maxPlayers: Number(this.form.value.maxPlayers),
+        maxLifesPerPlayer: Number(this.form.value.maxLifePerPlayers),
+        privateRoom: this.form.value.privateRoom ?? false,
+        password: this.form.value.roomPassword || undefined,
+      };
+
+      try {
+        const lobby = await firstValueFrom(this.lobbyService.createGame(request));
+        this.router.navigate(['/game', lobby.lobby_id]);
+      } catch (err) {
+        console.error('Error in creating lobby:', err);
+      }
   }
 }
